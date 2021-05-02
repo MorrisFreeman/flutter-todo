@@ -26,6 +26,8 @@ class AuthPage extends StatefulWidget {
 class _AuthPageState extends State<AuthPage> {
   String newUserEmail = "";
   String newUserPassword = "";
+  String loginUserEmail = "";
+  String loginUserPassword = "";
   String infoText = "";
 
   @override
@@ -73,6 +75,43 @@ class _AuthPageState extends State<AuthPage> {
                   },
                   child: Text("ユーザー登録"),
                 ),
+                const SizedBox(height: 32),
+                TextFormField(
+                  decoration: InputDecoration(labelText: "メールアドレス"),
+                  onChanged: (String value) {
+                    setState(() {
+                      loginUserEmail = value;
+                    });
+                  },
+                ),
+                TextFormField(
+                  decoration: InputDecoration(labelText: "パスワード"),
+                  onChanged: (String value) {
+                    setState(() {
+                      loginUserPassword = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 8),
+                ElevatedButton(
+                    onPressed: () async {
+                      try {
+                        final FirebaseAuth auth = FirebaseAuth.instance;
+                        final UserCredential result =
+                            await auth.signInWithEmailAndPassword(
+                                email: loginUserEmail,
+                                password: loginUserPassword);
+                        final User user = result.user;
+                        setState(() {
+                          infoText = "ログインOK：${user.email}";
+                        });
+                      } catch (e) {
+                        setState(() {
+                          infoText = "ログインNG：${e.toString()}";
+                        });
+                      }
+                    },
+                    child: Text("ログイン")),
                 const SizedBox(height: 8),
                 Text(infoText),
               ],
