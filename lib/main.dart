@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -11,115 +12,159 @@ class MyTodoApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Todo',
+      title: 'FirestoreTest',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: AuthPage(),
+      home: FirestoreTestPage(),
     );
   }
 }
 
-class AuthPage extends StatefulWidget {
+class FirestoreTestPage extends StatefulWidget {
   @override
-  _AuthPageState createState() => _AuthPageState();
+  _FirestoreTestPageState createState() => _FirestoreTestPageState();
 }
 
-class _AuthPageState extends State<AuthPage> {
-  String newUserEmail = "";
-  String newUserPassword = "";
-  String loginUserEmail = "";
-  String loginUserPassword = "";
-  String infoText = "";
-
+class _FirestoreTestPageState extends State<FirestoreTestPage> {
+  List<DocumentSnapshot> documentList = [];
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Container(
-            padding: EdgeInsets.all(32),
-            child: Column(
-              children: <Widget>[
-                TextFormField(
-                  decoration: InputDecoration(labelText: "メールアドレス"),
-                  onChanged: (String value) {
-                    setState(() {
-                      newUserEmail = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  decoration: InputDecoration(labelText: "パスワード（6文字以上）"),
-                  onChanged: (String value) {
-                    setState(() {
-                      newUserPassword = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 8),
-                ElevatedButton(
-                  onPressed: () async {
-                    try {
-                      final FirebaseAuth auth = FirebaseAuth.instance;
-                      final UserCredential result =
-                          await auth.createUserWithEmailAndPassword(
-                              email: newUserEmail, password: newUserPassword);
-                      final User user = result.user;
-                      setState(() {
-                        infoText = "登録OK：${user.email}";
-                      });
-                    } catch (e) {
-                      setState(() {
-                        infoText = "登録NG：${e.toString()}";
-                      });
-                    }
-                  },
-                  child: Text("ユーザー登録"),
-                ),
-                const SizedBox(height: 32),
-                TextFormField(
-                  decoration: InputDecoration(labelText: "メールアドレス"),
-                  onChanged: (String value) {
-                    setState(() {
-                      loginUserEmail = value;
-                    });
-                  },
-                ),
-                TextFormField(
-                  decoration: InputDecoration(labelText: "パスワード"),
-                  onChanged: (String value) {
-                    setState(() {
-                      loginUserPassword = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 8),
-                ElevatedButton(
-                    onPressed: () async {
-                      try {
-                        final FirebaseAuth auth = FirebaseAuth.instance;
-                        final UserCredential result =
-                            await auth.signInWithEmailAndPassword(
-                                email: loginUserEmail,
-                                password: loginUserPassword);
-                        final User user = result.user;
-                        setState(() {
-                          infoText = "ログインOK：${user.email}";
-                        });
-                      } catch (e) {
-                        setState(() {
-                          infoText = "ログインNG：${e.toString()}";
-                        });
-                      }
-                    },
-                    child: Text("ログイン")),
-                const SizedBox(height: 8),
-                Text(infoText),
-              ],
-            )),
-      ),
+          child: Column(
+        children: [
+          ElevatedButton(
+              onPressed: () async {
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc('id_abc')
+                    .set({'name': '平田', 'age': 30});
+              },
+              child: Text('コレクション＆ドキュメント作成')),
+          ElevatedButton(
+              onPressed: () async {
+                final snapshot =
+                    await FirebaseFirestore.instance.collection('users').get();
+                setState(() {
+                  documentList = snapshot.docs;
+                });
+              },
+              child: Text("ドキュメント一覧取得")),
+          Column(
+            children: documentList.map((document) {
+              return ListTile(
+                title: Text('${document['name']}さん'),
+                subtitle: Text('${document['age']}歳'),
+              );
+            }).toList(),
+          )
+        ],
+      )),
     );
   }
 }
+
+// class AuthPage extends StatefulWidget {
+//   @override
+//   _AuthPageState createState() => _AuthPageState();
+// }
+
+// class _AuthPageState extends State<AuthPage> {
+//   String newUserEmail = "";
+//   String newUserPassword = "";
+//   String loginUserEmail = "";
+//   String loginUserPassword = "";
+//   String infoText = "";
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       body: Center(
+//         child: Container(
+//             padding: EdgeInsets.all(32),
+//             child: Column(
+//               children: <Widget>[
+//                 TextFormField(
+//                   decoration: InputDecoration(labelText: "メールアドレス"),
+//                   onChanged: (String value) {
+//                     setState(() {
+//                       newUserEmail = value;
+//                     });
+//                   },
+//                 ),
+//                 const SizedBox(height: 8),
+//                 TextFormField(
+//                   decoration: InputDecoration(labelText: "パスワード（6文字以上）"),
+//                   onChanged: (String value) {
+//                     setState(() {
+//                       newUserPassword = value;
+//                     });
+//                   },
+//                 ),
+//                 const SizedBox(height: 8),
+//                 ElevatedButton(
+//                   onPressed: () async {
+//                     try {
+//                       final FirebaseAuth auth = FirebaseAuth.instance;
+//                       final UserCredential result =
+//                           await auth.createUserWithEmailAndPassword(
+//                               email: newUserEmail, password: newUserPassword);
+//                       final User user = result.user;
+//                       setState(() {
+//                         infoText = "登録OK：${user.toString()}";
+//                       });
+//                     } catch (e) {
+//                       setState(() {
+//                         infoText = "登録NG：${e.toString()}";
+//                       });
+//                     }
+//                   },
+//                   child: Text("ユーザー登録"),
+//                 ),
+//                 const SizedBox(height: 32),
+//                 TextFormField(
+//                   decoration: InputDecoration(labelText: "メールアドレス"),
+//                   onChanged: (String value) {
+//                     setState(() {
+//                       loginUserEmail = value;
+//                     });
+//                   },
+//                 ),
+//                 TextFormField(
+//                   decoration: InputDecoration(labelText: "パスワード"),
+//                   onChanged: (String value) {
+//                     setState(() {
+//                       loginUserPassword = value;
+//                     });
+//                   },
+//                 ),
+//                 const SizedBox(height: 8),
+//                 ElevatedButton(
+//                     onPressed: () async {
+//                       try {
+//                         final FirebaseAuth auth = FirebaseAuth.instance;
+//                         final UserCredential result =
+//                             await auth.signInWithEmailAndPassword(
+//                                 email: loginUserEmail,
+//                                 password: loginUserPassword);
+//                         final User user = result.user;
+//                         setState(() {
+//                           infoText = "ログインOK：${user.email}";
+//                         });
+//                       } catch (e) {
+//                         setState(() {
+//                           infoText = "ログインNG：${e.toString()}";
+//                         });
+//                       }
+//                     },
+//                     child: Text("ログイン")),
+//                 const SizedBox(height: 8),
+//                 Text(infoText),
+//               ],
+//             )),
+//       ),
+//     );
+//   }
+// }
 
 // class MyTodoApp extends StatelessWidget {
 //   @override
