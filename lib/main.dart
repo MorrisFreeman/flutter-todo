@@ -14,258 +14,181 @@ class MyTodoApp extends StatelessWidget {
     return MaterialApp(
       title: 'FirestoreTest',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: FirestoreTestPage(),
+      home: LoginPage(),
     );
   }
 }
 
-class FirestoreTestPage extends StatefulWidget {
+class LoginPage extends StatefulWidget {
   @override
-  _FirestoreTestPageState createState() => _FirestoreTestPageState();
+  _LoginPageState createState() => _LoginPageState();
 }
 
-class _FirestoreTestPageState extends State<FirestoreTestPage> {
-  List<DocumentSnapshot> documentList = [];
+class _LoginPageState extends State<LoginPage> {
+  String infoText = '';
+  String email = '';
+  String password = '';
+
+  Future<void> createOrUpdateUser(uid, email, name) async {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .set({'email': email});
+  }
+
+  Future<User> execSignUp(email, password) async {
+    final FirebaseAuth auth = FirebaseAuth.instance;
+    final UserCredential result = await auth.createUserWithEmailAndPassword(
+        email: email, password: password);
+    return result.user;
+  }
+
+  Future<User> execSignIn(email, password) async {
+    final FirebaseAuth auth = FirebaseAuth.instance;
+    final UserCredential result =
+        await auth.signInWithEmailAndPassword(email: email, password: password);
+    return result.user;
+  }
+
+  Future<void> onPressedSignUp(email, password) async {
+    try {
+      final user = await execSignUp(email, password);
+      await createOrUpdateUser(user.uid, user.email, user.displayName);
+      await Navigator.of(context)
+          .pushReplacement(MaterialPageRoute(builder: (context) {
+        return TodoListPage(user);
+      }));
+    } catch (e) {
+      setState(() {
+        infoText = "登録に失敗しました：${e.toString()}";
+      });
+    }
+  }
+
+  Future<void> onPressedSignIn(email, password) async {
+    try {
+      final user = await execSignIn(email, password);
+      await createOrUpdateUser(user.uid, user.email, user.displayName);
+      await Navigator.of(context)
+          .pushReplacement(MaterialPageRoute(builder: (context) {
+        return TodoListPage(user);
+      }));
+    } catch (e) {
+      setState(() {
+        infoText = "ログインに失敗しました：${e.toString()}";
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-          child: Column(
-        children: [
-          ElevatedButton(
-              onPressed: () async {
-                await FirebaseFirestore.instance
-                    .collection('users')
-                    .doc('id_abc')
-                    .set({'name': '平田', 'age': 30});
-              },
-              child: Text('コレクション＆ドキュメント作成')),
-          ElevatedButton(
-              onPressed: () async {
-                final snapshot =
-                    await FirebaseFirestore.instance.collection('users').get();
-                setState(() {
-                  documentList = snapshot.docs;
-                });
-              },
-              child: Text("ドキュメント一覧取得")),
-          Column(
-            children: documentList.map((document) {
-              return ListTile(
-                title: Text('${document['name']}さん'),
-                subtitle: Text('${document['age']}歳'),
-              );
-            }).toList(),
-          )
-        ],
-      )),
+        child: Container(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextFormField(
+                  decoration: InputDecoration(labelText: 'メールアドレス'),
+                  onChanged: (String value) {
+                    setState(() {
+                      email = value;
+                    });
+                  },
+                ),
+                TextFormField(
+                  decoration: InputDecoration(labelText: 'パスワード'),
+                  obscureText: true,
+                  onChanged: (String value) {
+                    setState(() {
+                      password = value;
+                    });
+                  },
+                ),
+                Container(
+                  padding: EdgeInsets.all(8),
+                  child: Text(infoText),
+                ),
+                Container(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                      onPressed: () async {
+                        await onPressedSignUp(email, password);
+                      },
+                      child: Text('ユーザー登録')),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                      onPressed: () async {
+                        await onPressedSignIn(email, password);
+                      },
+                      child: Text('ログイン')),
+                ),
+              ],
+            )),
+      ),
     );
   }
 }
 
-// class AuthPage extends StatefulWidget {
-//   @override
-//   _AuthPageState createState() => _AuthPageState();
-// }
+class TodoListPage extends StatefulWidget {
+  TodoListPage(this.user);
+  final User user;
 
-// class _AuthPageState extends State<AuthPage> {
-//   String newUserEmail = "";
-//   String newUserPassword = "";
-//   String loginUserEmail = "";
-//   String loginUserPassword = "";
-//   String infoText = "";
+  @override
+  _TodoListPageState createState() => _TodoListPageState(user);
+}
 
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       body: Center(
-//         child: Container(
-//             padding: EdgeInsets.all(32),
-//             child: Column(
-//               children: <Widget>[
-//                 TextFormField(
-//                   decoration: InputDecoration(labelText: "メールアドレス"),
-//                   onChanged: (String value) {
-//                     setState(() {
-//                       newUserEmail = value;
-//                     });
-//                   },
-//                 ),
-//                 const SizedBox(height: 8),
-//                 TextFormField(
-//                   decoration: InputDecoration(labelText: "パスワード（6文字以上）"),
-//                   onChanged: (String value) {
-//                     setState(() {
-//                       newUserPassword = value;
-//                     });
-//                   },
-//                 ),
-//                 const SizedBox(height: 8),
-//                 ElevatedButton(
-//                   onPressed: () async {
-//                     try {
-//                       final FirebaseAuth auth = FirebaseAuth.instance;
-//                       final UserCredential result =
-//                           await auth.createUserWithEmailAndPassword(
-//                               email: newUserEmail, password: newUserPassword);
-//                       final User user = result.user;
-//                       setState(() {
-//                         infoText = "登録OK：${user.toString()}";
-//                       });
-//                     } catch (e) {
-//                       setState(() {
-//                         infoText = "登録NG：${e.toString()}";
-//                       });
-//                     }
-//                   },
-//                   child: Text("ユーザー登録"),
-//                 ),
-//                 const SizedBox(height: 32),
-//                 TextFormField(
-//                   decoration: InputDecoration(labelText: "メールアドレス"),
-//                   onChanged: (String value) {
-//                     setState(() {
-//                       loginUserEmail = value;
-//                     });
-//                   },
-//                 ),
-//                 TextFormField(
-//                   decoration: InputDecoration(labelText: "パスワード"),
-//                   onChanged: (String value) {
-//                     setState(() {
-//                       loginUserPassword = value;
-//                     });
-//                   },
-//                 ),
-//                 const SizedBox(height: 8),
-//                 ElevatedButton(
-//                     onPressed: () async {
-//                       try {
-//                         final FirebaseAuth auth = FirebaseAuth.instance;
-//                         final UserCredential result =
-//                             await auth.signInWithEmailAndPassword(
-//                                 email: loginUserEmail,
-//                                 password: loginUserPassword);
-//                         final User user = result.user;
-//                         setState(() {
-//                           infoText = "ログインOK：${user.email}";
-//                         });
-//                       } catch (e) {
-//                         setState(() {
-//                           infoText = "ログインNG：${e.toString()}";
-//                         });
-//                       }
-//                     },
-//                     child: Text("ログイン")),
-//                 const SizedBox(height: 8),
-//                 Text(infoText),
-//               ],
-//             )),
-//       ),
-//     );
-//   }
-// }
+class _TodoListPageState extends State<TodoListPage> {
+  _TodoListPageState(this.user);
+  final User user;
 
-// class MyTodoApp extends StatelessWidget {
-//   @override
-//   Widget build(BuildContext context) {
-//     return MaterialApp(
-//       title: 'Flutter Demo',
-//       theme: ThemeData(
-//         primarySwatch: Colors.blue,
-//       ),
-//       home: TodoListPage(),
-//     );
-//   }
-// }
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Todoリスト'),
+        actions: <Widget>[
+          IconButton(
+              icon: Icon(Icons.logout),
+              onPressed: () async {
+                await FirebaseAuth.instance.signOut();
+                await Navigator.of(context)
+                    .pushReplacement(MaterialPageRoute(builder: (context) {
+                  return LoginPage();
+                }));
+              })
+        ],
+      ),
+      body: Center(
+        child: Text(user.email),
+      ),
+      floatingActionButton: FloatingActionButton(
+        child: Icon(Icons.add),
+        onPressed: () async {
+          await Navigator.of(context)
+              .push(MaterialPageRoute(builder: (context) {
+            return AddTodoPage();
+          }));
+        },
+      ),
+    );
+  }
+}
 
-// class TodoListPage extends StatefulWidget {
-//   @override
-//   _TodoListPageState createState() => _TodoListPageState();
-// }
+class AddTodoPage extends StatefulWidget {
+  @override
+  _AddTodoPageState createState() => _AddTodoPageState();
+}
 
-// class _TodoListPageState extends State<TodoListPage> {
-//   List<String> todoList = [];
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(title: Text('リスト一覧')),
-//       body: ListView.builder(
-//         itemCount: todoList.length,
-//         itemBuilder: (context, index) {
-//           return Card(
-//             child: ListTile(
-//               title: Text(todoList[index]),
-//             ),
-//           );
-//         },
-//       ),
-//       floatingActionButton: FloatingActionButton(
-//         onPressed: () async {
-//           final newListText = await Navigator.of(context).push(
-//             MaterialPageRoute(builder: (context) {
-//               return TodoAddPage();
-//             }),
-//           );
-//           if (newListText != null) {
-//             setState(() {
-//               todoList.add(newListText);
-//             });
-//           }
-//         },
-//         child: Icon(Icons.add),
-//       ),
-//     );
-//   }
-// }
-
-// class TodoAddPage extends StatefulWidget {
-//   @override
-//   _TodoAddPageState createState() => _TodoAddPageState();
-// }
-
-// class _TodoAddPageState extends State<TodoAddPage> {
-//   String _text = '';
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(title: Text('リスト追加')),
-//       body: Container(
-//         padding: EdgeInsets.all(64),
-//         child: Column(
-//           mainAxisAlignment: MainAxisAlignment.center,
-//           children: <Widget>[
-//             TextField(
-//               onChanged: (String value) {
-//                 setState(() {
-//                   _text = value;
-//                 });
-//               },
-//             ),
-//             const SizedBox(
-//               height: 8,
-//             ),
-//             Container(
-//                 width: double.infinity,
-//                 child: ElevatedButton(
-//                   onPressed: () {
-//                     Navigator.of(context).pop(_text);
-//                   },
-//                   child: Text('リスト追加', style: TextStyle(color: Colors.white)),
-//                 )),
-//             Container(
-//                 width: double.infinity,
-//                 child: TextButton(
-//                   onPressed: () {
-//                     Navigator.of(context).pop();
-//                   },
-//                   child: Text('キャンセル'),
-//                 )),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
+class _AddTodoPageState extends State<AddTodoPage> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Todo追加')),
+    );
+  }
+}
