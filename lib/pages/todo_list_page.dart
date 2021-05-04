@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:todo/states/authentication_provider.dart';
 
-import 'login_page.dart';
 import 'add_todo_page.dart';
 
 class TodoListPage extends StatefulWidget {
@@ -54,15 +53,17 @@ class _TodoListPageState extends State<TodoListPage> {
         index: _currentIndex,
         children: _childPageList,
       ),
-      floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.add),
-        onPressed: () async {
-          await Navigator.of(context)
-              .push(MaterialPageRoute(builder: (context) {
-            return AddTodoPage();
-          }));
-        },
-      ),
+      floatingActionButton: _currentIndex == 0
+          ? FloatingActionButton(
+              child: Icon(Icons.add),
+              onPressed: () async {
+                await Navigator.of(context)
+                    .push(MaterialPageRoute(builder: (context) {
+                  return AddTodoPage();
+                }));
+              },
+            )
+          : null,
       bottomNavigationBar: BottomNavigationBar(
           currentIndex: _currentIndex,
           items: [
