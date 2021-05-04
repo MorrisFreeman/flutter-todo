@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
+// import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -18,7 +18,7 @@ class _TodoListPageState extends State<TodoListPage> {
         .collection('users')
         .doc(userUid)
         .collection('tasks')
-        .orderBy('updated_at')
+        .orderBy('updated_at', descending: true)
         .snapshots();
   }
 
@@ -27,22 +27,52 @@ class _TodoListPageState extends State<TodoListPage> {
         .collection('users')
         .doc(userUid)
         .collection('doneTasks')
-        .orderBy('updated_at')
+        .orderBy('updated_at', descending: true)
         .snapshots();
   }
 
-  Future<void> taskToDone(String taskUid) async {
-    HttpsCallable callable =
-        FirebaseFunctions.instanceFor(region: 'asia-northeast1')
-            .httpsCallable('taskToDone');
-    await callable({'taskUid': taskUid});
+  Future<void> taskToDone(String userUid, String taskUid) async {
+    // HttpsCallable callable =
+    //     FirebaseFunctions.instanceFor(region: 'asia-northeast1')
+    //         .httpsCallable('taskToDone');
+    // await callable({'taskUid': taskUid});
+    final db = FirebaseFirestore.instance;
+    final taskRef =
+        db.collection('users').doc(userUid).collection('tasks').doc(taskUid);
+    final doneTaskRef = db
+        .collection('users')
+        .doc(userUid)
+        .collection('doneTasks')
+        .doc(taskUid);
+
+    await db.runTransaction((transaction) async {
+      final taskSnapshot = await transaction.get(taskRef);
+      transaction.set(
+          doneTaskRef, {...taskSnapshot.data(), 'updated_at': DateTime.now()});
+      transaction.delete(taskRef);
+    });
   }
 
-  Future<void> taskToNotYet(String taskUid) async {
-    HttpsCallable callable =
-        FirebaseFunctions.instanceFor(region: 'asia-northeast1')
-            .httpsCallable('taskToNotYet');
-    await callable({'taskUid': taskUid});
+  Future<void> taskToNotYet(String userUid, String taskUid) async {
+    // HttpsCallable callable =
+    //     FirebaseFunctions.instanceFor(region: 'asia-northeast1')
+    //         .httpsCallable('taskToNotYet');
+    // await callable({'taskUid': taskUid});
+    final db = FirebaseFirestore.instance;
+    final taskRef =
+        db.collection('users').doc(userUid).collection('tasks').doc(taskUid);
+    final doneTaskRef = db
+        .collection('users')
+        .doc(userUid)
+        .collection('doneTasks')
+        .doc(taskUid);
+
+    await db.runTransaction((transaction) async {
+      final doneTaskSnapshot = await transaction.get(doneTaskRef);
+      transaction.set(
+          taskRef, {...doneTaskSnapshot.data(), 'updated_at': DateTime.now()});
+      transaction.delete(doneTaskRef);
+    });
   }
 
   @override
@@ -91,7 +121,7 @@ class _TodoListPageState extends State<TodoListPage> {
                       controlAffinity: ListTileControlAffinity.leading,
                       value: false,
                       onChanged: (bool _done) async {
-                        await taskToDone(doc.id);
+                        await taskToDone(user.uid, doc.id);
                       },
                     ),
                   );
@@ -127,7 +157,7 @@ class _TodoListPageState extends State<TodoListPage> {
                       controlAffinity: ListTileControlAffinity.leading,
                       value: true,
                       onChanged: (bool _done) async {
-                        await taskToNotYet(doc.id);
+                        await taskToNotYet(user.uid, doc.id);
                       },
                     ),
                   );
