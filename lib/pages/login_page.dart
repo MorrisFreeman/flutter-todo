@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
-import 'todo_list_page.dart';
+import 'package:provider/provider.dart';
+import 'package:todo/states/authentication_provider.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -10,64 +10,38 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  bool signUp = false;
   String infoText = '';
-  String email = '';
-  String password = '';
 
-  Future<void> createOrUpdateUser(uid, email, name) async {
+  Future<void> createOrUpdateUser(String uid, String email, String name) async {
     await FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
         .set({'email': email});
   }
 
-  Future<User> execSignUp(email, password) async {
+  Future<User> execSignUp(String email, String password) async {
     final FirebaseAuth auth = FirebaseAuth.instance;
     final UserCredential result = await auth.createUserWithEmailAndPassword(
         email: email, password: password);
     return result.user;
   }
 
-  Future<User> execSignIn(email, password) async {
+  Future<User> execSignIn(String email, String password) async {
     final FirebaseAuth auth = FirebaseAuth.instance;
     final UserCredential result =
         await auth.signInWithEmailAndPassword(email: email, password: password);
     return result.user;
   }
 
-  Future<void> onPressedSignUp(email, password) async {
-    try {
-      final user = await execSignUp(email, password);
-      await createOrUpdateUser(user.uid, user.email, user.displayName);
-      await Navigator.of(context)
-          .pushReplacement(MaterialPageRoute(builder: (context) {
-        return TodoListPage(user);
-      }));
-    } catch (e) {
-      setState(() {
-        infoText = "登録に失敗しました：${e.toString()}";
-      });
-    }
-  }
-
-  Future<void> onPressedSignIn(email, password) async {
-    try {
-      final user = await execSignIn(email, password);
-      await createOrUpdateUser(user.uid, user.email, user.displayName);
-      await Navigator.of(context)
-          .pushReplacement(MaterialPageRoute(builder: (context) {
-        return TodoListPage(user);
-      }));
-    } catch (e) {
-      setState(() {
-        infoText = "ログインに失敗しました：${e.toString()}";
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: signUp ? Text('アカウント作成') : Text('ログイン'),
+      ),
       body: Center(
         child: Container(
             padding: EdgeInsets.all(24),
@@ -75,42 +49,45 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 TextFormField(
+                  controller: emailController,
                   decoration: InputDecoration(labelText: 'メールアドレス'),
-                  onChanged: (String value) {
-                    setState(() {
-                      email = value;
-                    });
-                  },
                 ),
                 TextFormField(
                   decoration: InputDecoration(labelText: 'パスワード'),
                   obscureText: true,
-                  onChanged: (String value) {
-                    setState(() {
-                      password = value;
-                    });
-                  },
+                  controller: passwordController,
                 ),
                 Container(
                   padding: EdgeInsets.all(8),
                   child: Text(infoText),
                 ),
-                Container(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                      onPressed: () async {
-                        await onPressedSignUp(email, password);
-                      },
-                      child: Text('ユーザー登録')),
-                ),
                 const SizedBox(height: 8),
                 Container(
                   width: double.infinity,
                   child: ElevatedButton(
-                      onPressed: () async {
-                        await onPressedSignIn(email, password);
+                      onPressed: () {
+                        if (signUp) {
+                          context.read<AuthenticationProvider>().signUp(
+                              email: emailController.text.trim(),
+                              password: passwordController.text.trim());
+                        } else {
+                          context.read<AuthenticationProvider>().signIn(
+                              email: emailController.text.trim(),
+                              password: passwordController.text.trim());
+                        }
                       },
-                      child: Text('ログイン')),
+                      child: signUp ? Text('アカウント作成') : Text('ログイン')),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  child: TextButton(
+                      onPressed: () {
+                        setState(() {
+                          signUp = !signUp;
+                        });
+                      },
+                      child: signUp ? Text('ログインする') : Text('アカウントを作成する')),
                 ),
               ],
             )),

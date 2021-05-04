@@ -1,23 +1,20 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class AddTodoPage extends StatefulWidget {
-  AddTodoPage(this.userUid);
-  final String userUid;
-
   @override
-  _AddTodoPageState createState() => _AddTodoPageState(userUid);
+  _AddTodoPageState createState() => _AddTodoPageState();
 }
 
 class _AddTodoPageState extends State<AddTodoPage> {
-  _AddTodoPageState(this.userUid);
-  final String userUid;
-
-  String task = '';
+  String task = 'empty message';
 
   @override
   Widget build(BuildContext context) {
+    final user = context.read<User>();
+
     return Scaffold(
       appBar: AppBar(title: Text('Todo追加')),
       body: Center(
@@ -45,11 +42,10 @@ class _AddTodoPageState extends State<AddTodoPage> {
                       final date = DateTime.now().toLocal().toIso8601String();
                       await FirebaseFirestore.instance
                           .collection('users')
-                          .doc(userUid)
+                          .doc(user.uid)
                           .collection('tasks')
                           .add({
                         'text': task,
-                        'done': false,
                         'created_at': date,
                         'updated_at': date
                       });
