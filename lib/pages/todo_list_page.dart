@@ -13,20 +13,65 @@ class TodoListPage extends StatefulWidget {
 }
 
 class _TodoListPageState extends State<TodoListPage> {
+  int _currentIndex = 0;
+  final _childPageList = [
+    _TodoList(),
+    _DoneTodoList(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Todoリスト'),
+        actions: <Widget>[
+          IconButton(
+              icon: Icon(Icons.logout),
+              onPressed: () async {
+                await FirebaseAuth.instance.signOut();
+                await Navigator.of(context)
+                    .pushReplacement(MaterialPageRoute(builder: (context) {
+                  return LoginPage();
+                }));
+              })
+        ],
+      ),
+      body: Column(
+        children: [_childPageList[_currentIndex]],
+      ),
+      floatingActionButton: FloatingActionButton(
+        child: Icon(Icons.add),
+        onPressed: () async {
+          await Navigator.of(context)
+              .push(MaterialPageRoute(builder: (context) {
+            return AddTodoPage();
+          }));
+        },
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          items: [
+            BottomNavigationBarItem(
+                icon: Icon(Icons.check_box_outline_blank_outlined),
+                label: 'NotYet'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.check_box_outlined), label: 'Done')
+          ],
+          onTap: (int index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          }),
+    );
+  }
+}
+
+class _TodoList extends StatelessWidget {
   Stream<QuerySnapshot> fetchTasksSnapshot(String userUid) {
     return FirebaseFirestore.instance
         .collection('users')
         .doc(userUid)
         .collection('tasks')
-        .orderBy('updated_at', descending: true)
-        .snapshots();
-  }
-
-  Stream<QuerySnapshot> fetchDoneTasksSnapshot(String userUid) {
-    return FirebaseFirestore.instance
-        .collection('users')
-        .doc(userUid)
-        .collection('doneTasks')
         .orderBy('updated_at', descending: true)
         .snapshots();
   }
@@ -51,6 +96,58 @@ class _TodoListPageState extends State<TodoListPage> {
           doneTaskRef, {...taskSnapshot.data(), 'updated_at': DateTime.now()});
       transaction.delete(taskRef);
     });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = context.read<User>();
+    return Expanded(
+        child: StreamBuilder<QuerySnapshot>(
+      stream: fetchTasksSnapshot(user.uid),
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          final List<DocumentSnapshot> docs = snapshot.data.docs;
+          return ListView(
+              children: docs.map((doc) {
+            return Card(
+              child: CheckboxListTile(
+                title: Text(doc['text']),
+                secondary: IconButton(
+                  icon: Icon(Icons.delete),
+                  onPressed: () async {
+                    await FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(user.uid)
+                        .collection('tasks')
+                        .doc(doc.id)
+                        .delete();
+                  },
+                ),
+                controlAffinity: ListTileControlAffinity.leading,
+                value: false,
+                onChanged: (bool _done) async {
+                  await taskToDone(user.uid, doc.id);
+                },
+              ),
+            );
+          }).toList());
+        }
+        return Center(
+          child: Text('読み込み中...'),
+        );
+      },
+    ));
+  }
+}
+
+class _DoneTodoList extends StatelessWidget {
+  Stream<QuerySnapshot> fetchDoneTasksSnapshot(String userUid) {
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(userUid)
+        .collection('doneTasks')
+        .orderBy('updated_at', descending: true)
+        .snapshots();
   }
 
   Future<void> taskToNotYet(String userUid, String taskUid) async {
@@ -78,107 +175,41 @@ class _TodoListPageState extends State<TodoListPage> {
   @override
   Widget build(BuildContext context) {
     final user = context.read<User>();
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Todoリスト'),
-        actions: <Widget>[
-          IconButton(
-              icon: Icon(Icons.logout),
-              onPressed: () async {
-                await FirebaseAuth.instance.signOut();
-                await Navigator.of(context)
-                    .pushReplacement(MaterialPageRoute(builder: (context) {
-                  return LoginPage();
-                }));
-              })
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-            stream: fetchTasksSnapshot(user.uid),
-            builder: (context, snapshot) {
-              if (snapshot.hasData) {
-                final List<DocumentSnapshot> docs = snapshot.data.docs;
-                return ListView(
-                    children: docs.map((doc) {
-                  return Card(
-                    child: CheckboxListTile(
-                      title: Text(doc['text']),
-                      secondary: IconButton(
-                        icon: Icon(Icons.delete),
-                        onPressed: () async {
-                          await FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(user.uid)
-                              .collection('tasks')
-                              .doc(doc.id)
-                              .delete();
-                        },
-                      ),
-                      controlAffinity: ListTileControlAffinity.leading,
-                      value: false,
-                      onChanged: (bool _done) async {
-                        await taskToDone(user.uid, doc.id);
-                      },
-                    ),
-                  );
-                }).toList());
-              }
-              return Center(
-                child: Text('読み込み中...'),
-              );
-            },
-          )),
-          Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-            stream: fetchDoneTasksSnapshot(user.uid),
-            builder: (context, snapshot) {
-              if (snapshot.hasData) {
-                final List<DocumentSnapshot> docs = snapshot.data.docs;
-                return ListView(
-                    children: docs.map((doc) {
-                  return Card(
-                    child: CheckboxListTile(
-                      title: Text(doc['text']),
-                      secondary: IconButton(
-                        icon: Icon(Icons.delete),
-                        onPressed: () async {
-                          await FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(user.uid)
-                              .collection('doneTasks')
-                              .doc(doc.id)
-                              .delete();
-                        },
-                      ),
-                      controlAffinity: ListTileControlAffinity.leading,
-                      value: true,
-                      onChanged: (bool _done) async {
-                        await taskToNotYet(user.uid, doc.id);
-                      },
-                    ),
-                  );
-                }).toList());
-              }
-              return Center(
-                child: Text('読み込み中...'),
-              );
-            },
-          )),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.add),
-        onPressed: () async {
-          await Navigator.of(context)
-              .push(MaterialPageRoute(builder: (context) {
-            return AddTodoPage();
-          }));
-        },
-      ),
-    );
+    return Expanded(
+        child: StreamBuilder<QuerySnapshot>(
+      stream: fetchDoneTasksSnapshot(user.uid),
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          final List<DocumentSnapshot> docs = snapshot.data.docs;
+          return ListView(
+              children: docs.map((doc) {
+            return Card(
+              child: CheckboxListTile(
+                title: Text(doc['text']),
+                secondary: IconButton(
+                  icon: Icon(Icons.delete),
+                  onPressed: () async {
+                    await FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(user.uid)
+                        .collection('doneTasks')
+                        .doc(doc.id)
+                        .delete();
+                  },
+                ),
+                controlAffinity: ListTileControlAffinity.leading,
+                value: true,
+                onChanged: (bool _done) async {
+                  await taskToNotYet(user.uid, doc.id);
+                },
+              ),
+            );
+          }).toList());
+        }
+        return Center(
+          child: Text('読み込み中...'),
+        );
+      },
+    ));
   }
 }
