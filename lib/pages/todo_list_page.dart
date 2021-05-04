@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:todo/states/authentication_provider.dart';
 
 import 'login_page.dart';
 import 'add_todo_page.dart';
@@ -21,23 +22,37 @@ class _TodoListPageState extends State<TodoListPage> {
 
   @override
   Widget build(BuildContext context) {
+    Future<void> _showLogoutDialog() async {
+      final isLogouting = await showDialog(
+          context: context,
+          builder: (BuildContext context) => AlertDialog(
+                title: Text('ログアウトしますか？'),
+                actions: [
+                  SimpleDialogOption(
+                      child: Text('はい'),
+                      onPressed: () => Navigator.pop(context, true)),
+                  SimpleDialogOption(
+                      child: Text('いいえ'),
+                      onPressed: () => Navigator.pop(context, false))
+                ],
+              ));
+      if (isLogouting) {
+        context.read<AuthenticationProvider>().signOut();
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Todoリスト'),
         actions: <Widget>[
           IconButton(
               icon: Icon(Icons.logout),
-              onPressed: () async {
-                await FirebaseAuth.instance.signOut();
-                await Navigator.of(context)
-                    .pushReplacement(MaterialPageRoute(builder: (context) {
-                  return LoginPage();
-                }));
-              })
+              onPressed: () async => _showLogoutDialog())
         ],
       ),
-      body: Column(
-        children: [_childPageList[_currentIndex]],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _childPageList,
       ),
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.add),
@@ -98,9 +113,37 @@ class _TodoList extends StatelessWidget {
     });
   }
 
+  Future<void> _deleteTask(String userUid, String taskUid) async {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userUid)
+        .collection('tasks')
+        .doc(taskUid)
+        .delete();
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.read<User>();
+    Future<void> _showDeleteDialog(String userUid, String taskUid) async {
+      final isDeleting = await showDialog(
+          context: context,
+          builder: (BuildContext context) => AlertDialog(
+                title: Text('削除しますか？'),
+                actions: [
+                  SimpleDialogOption(
+                      child: Text('はい'),
+                      onPressed: () => Navigator.pop(context, true)),
+                  SimpleDialogOption(
+                      child: Text('いいえ'),
+                      onPressed: () => Navigator.pop(context, false))
+                ],
+              ));
+      if (isDeleting) {
+        _deleteTask(userUid, taskUid);
+      }
+    }
+
     return Expanded(
         child: StreamBuilder<QuerySnapshot>(
       stream: fetchTasksSnapshot(user.uid),
@@ -114,14 +157,8 @@ class _TodoList extends StatelessWidget {
                 title: Text(doc['text']),
                 secondary: IconButton(
                   icon: Icon(Icons.delete),
-                  onPressed: () async {
-                    await FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(user.uid)
-                        .collection('tasks')
-                        .doc(doc.id)
-                        .delete();
-                  },
+                  onPressed: () async =>
+                      await _showDeleteDialog(user.uid, doc.id),
                 ),
                 controlAffinity: ListTileControlAffinity.leading,
                 value: false,
@@ -172,9 +209,38 @@ class _DoneTodoList extends StatelessWidget {
     });
   }
 
+  Future<void> _deleteDoneTask(String userUid, String taskUid) async {
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userUid)
+        .collection('doneTasks')
+        .doc(taskUid)
+        .delete();
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.read<User>();
+
+    Future<void> _showDeleteDialog(String userUid, String taskUid) async {
+      final isDeleting = await showDialog(
+          context: context,
+          builder: (BuildContext context) => AlertDialog(
+                title: Text('削除しますか？'),
+                actions: [
+                  SimpleDialogOption(
+                      child: Text('はい'),
+                      onPressed: () => Navigator.pop(context, true)),
+                  SimpleDialogOption(
+                      child: Text('いいえ'),
+                      onPressed: () => Navigator.pop(context, false))
+                ],
+              ));
+      if (isDeleting) {
+        _deleteDoneTask(userUid, taskUid);
+      }
+    }
+
     return Expanded(
         child: StreamBuilder<QuerySnapshot>(
       stream: fetchDoneTasksSnapshot(user.uid),
@@ -187,16 +253,9 @@ class _DoneTodoList extends StatelessWidget {
               child: CheckboxListTile(
                 title: Text(doc['text']),
                 secondary: IconButton(
-                  icon: Icon(Icons.delete),
-                  onPressed: () async {
-                    await FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(user.uid)
-                        .collection('doneTasks')
-                        .doc(doc.id)
-                        .delete();
-                  },
-                ),
+                    icon: Icon(Icons.delete),
+                    onPressed: () async =>
+                        await _showDeleteDialog(user.uid, doc.id)),
                 controlAffinity: ListTileControlAffinity.leading,
                 value: true,
                 onChanged: (bool _done) async {
