@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:todo/pages/authenticate_page.dart';
 
-import 'states/authentication_provider.dart';
+import 'providers/authentication_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:todo/states/authentication_provider.dart';
+import 'package:todo/providers/authentication_provider.dart';
 
 import 'add_todo_page.dart';
 
@@ -53,17 +53,17 @@ class _TodoListPageState extends State<TodoListPage> {
         index: _currentIndex,
         children: _childPageList,
       ),
-      floatingActionButton: _currentIndex == 0
-          ? FloatingActionButton(
-              child: Icon(Icons.add),
-              onPressed: () async {
-                await Navigator.of(context)
-                    .push(MaterialPageRoute(builder: (context) {
-                  return AddTodoPage();
-                }));
-              },
-            )
-          : null,
+      floatingActionButton: Visibility(
+          visible: _currentIndex == 0,
+          child: FloatingActionButton(
+            child: Icon(Icons.add),
+            onPressed: () async {
+              await Navigator.of(context)
+                  .push(MaterialPageRoute(builder: (context) {
+                return AddTodoPage();
+              }));
+            },
+          )),
       bottomNavigationBar: BottomNavigationBar(
           currentIndex: _currentIndex,
           items: [
@@ -145,7 +145,7 @@ class _TodoList extends StatelessWidget {
       }
     }
 
-    return Expanded(
+    return Container(
         child: StreamBuilder<QuerySnapshot>(
       stream: fetchTasksSnapshot(user.uid),
       builder: (context, snapshot) {
@@ -242,7 +242,7 @@ class _DoneTodoList extends StatelessWidget {
       }
     }
 
-    return Expanded(
+    return Container(
         child: StreamBuilder<QuerySnapshot>(
       stream: fetchDoneTasksSnapshot(user.uid),
       builder: (context, snapshot) {
